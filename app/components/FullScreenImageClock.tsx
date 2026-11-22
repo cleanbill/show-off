@@ -2,7 +2,19 @@
 "use client";
 
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { useImmichSlideshow } from "../hooks/useImmichSlideshow";
+import { useEffect } from "react";
+
+const outlinedNumberStyle: CSSProperties = {
+    WebkitTextStroke: "3px #000000",
+    paintOrder: "stroke fill",
+};
+
+const outlinedMetaStyle: CSSProperties = {
+    WebkitTextStroke: "1.5px #000000",
+    paintOrder: "stroke fill",
+};
 
 export default function FullScreenImageClock() {
     const {
@@ -13,9 +25,38 @@ export default function FullScreenImageClock() {
         isLoading,
         hasError,
         isPlaying,
+        canGoPrevious,
         togglePlay,
         fetchNewImage,
+        goPrevious,
     } = useImmichSlideshow("full");
+
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.altKey || event.ctrlKey || event.metaKey) return;
+            const target = event.target as HTMLElement | null;
+            if (
+                target &&
+                (target.tagName === "INPUT" ||
+                    target.tagName === "TEXTAREA" ||
+                    target.tagName === "SELECT" ||
+                    target.isContentEditable)
+            ) {
+                return;
+            }
+
+            if (event.key === "ArrowLeft") {
+                event.preventDefault();
+                goPrevious();
+            } else if (event.key === "ArrowRight") {
+                event.preventDefault();
+                fetchNewImage();
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [goPrevious, fetchNewImage]);
 
     const detailsText = [photoMeta.location, photoMeta.takenAt].filter(Boolean).join(" · ");
 
@@ -43,18 +84,27 @@ export default function FullScreenImageClock() {
             )}
 
             {/* Floating top clock overlay */}
-            <div className="absolute top-0 inset-x-0 flex items-center justify-between gap-4 px-5 py-3 bg-gradient-to-b from-black/65 via-black/25 to-transparent text-white pointer-events-none">
-                <span className="text-xs sm:text-sm uppercase tracking-wider text-zinc-300/90 drop-shadow truncate">
+            <div className="absolute top-0 inset-x-0 flex items-start justify-between gap-4 px-5 py-4 text-white pointer-events-none">
+                <span
+                    style={outlinedMetaStyle}
+                    className="text-sm sm:text-base uppercase tracking-wider text-white truncate mt-1"
+                >
                     {formattedDate ?? "Loading date..."}
                 </span>
-                <span className="text-2xl sm:text-3xl font-mono font-bold tabular-nums drop-shadow">
+                <span
+                    style={outlinedNumberStyle}
+                    className="text-5xl sm:text-7xl lg:text-8xl font-mono font-bold tabular-nums leading-none text-white"
+                >
                     {formattedTime ?? "--:--:--"}
                 </span>
             </div>
 
             {/* Subtle bottom-left EXIF location & timestamp + bottom-right controls */}
-            <div className="absolute bottom-0 inset-x-0 flex items-end justify-between gap-4 px-4 py-3 bg-gradient-to-t from-black/65 via-black/25 to-transparent pointer-events-none">
-                <div className="min-w-0 text-xs sm:text-sm text-zinc-300/85 drop-shadow truncate">
+            <div className="absolute bottom-0 inset-x-0 flex items-end justify-between gap-4 px-4 py-3 pointer-events-none">
+                <div
+                    style={outlinedMetaStyle}
+                    className="min-w-0 text-xs sm:text-sm text-white truncate"
+                >
                     {hasError && imageUrl
                         ? "Retry failed — keeping current photo"
                         : isLoading && imageUrl
@@ -76,6 +126,14 @@ export default function FullScreenImageClock() {
                         className="px-3 py-1.5 text-xs bg-zinc-900/75 hover:bg-zinc-800 disabled:opacity-40 text-zinc-200 font-medium rounded-md border border-white/10 transition cursor-pointer backdrop-blur-xs"
                     >
                         {isLoading ? "Loading..." : "Next"}
+                    </button>
+
+                    <button
+                        onClick={goPrevious}
+                        disabled={!canGoPrevious}
+                        className="px-3 py-1.5 text-xs bg-zinc-900/75 hover:bg-zinc-800 disabled:opacity-30 text-zinc-200 font-medium rounded-md border border-white/10 transition cursor-pointer backdrop-blur-xs"
+                    >
+                        Prev
                     </button>
 
                     <Link
